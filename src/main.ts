@@ -1,5 +1,5 @@
 import { MarkdownView, Notice, Plugin, PluginSettingTab, Setting, TFile, type App } from "obsidian";
-import { linesForRules, normalizeRule, rulesForFoldedLines, type FoldRule } from "./folds";
+import { linesForRules, normalizeRule, parseFoldCandidates, rulesForSync, type FoldRule } from "./folds";
 
 type FoldInfo = { folds: Array<{ from: number; to: number }>; lines: number };
 type FoldMode = {
@@ -52,6 +52,20 @@ export default class FrontmatterFoldsPlugin extends Plugin {
         const view = this.app.workspace.getActiveViewOfType(MarkdownView);
         if (!view?.file) return false;
         if (!checking) void this.applyView(view, true);
+        return true;
+      }
+    });
+
+    this.addCommand({
+      id: "toggle-persistence-at-cursor",
+      name: "Toggle persistence for fold at cursor",
+      checkCallback: (checking) => {
+        const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (!view?.file) return false;
+        const line = view.editor.getCursor().line;
+        const candidate = parseFoldCandidates(view.editor.getValue()).find((item) => item.line === line);
+        if (!candidate) return false;
+        if (!checking) void this.togglePersistence(view, candidate.rule);
         return true;
       }
     });
@@ -171,8 +185,10 @@ export default class FrontmatterFoldsPlugin extends Plugin {
     try {
       const markdown = view.editor.getValue();
       const foldedLines = new Set((mode.getFoldInfo()?.folds ?? []).map((fold) => fold.from));
-      const rules = rulesForFoldedLines(markdown, foldedLines);
-      const unsupported = foldedLines.size - rules.length;
+      const existingRules = this.readRules(file);
+      const rules = rulesForSync(markdown, foldedLines, existingRules);
+      const supportedFoldCount = rules.filter((rule) => !rule.persist || linesForRules(markdown, [rule]).some((line) => foldedLines.has(line))).length;
+      const unsupported = foldedLines.size - supportedFoldCount;
 
       if (JSON.stringify(this.readRules(file)) !== JSON.stringify(rules)) {
         await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
@@ -188,6 +204,32 @@ export default class FrontmatterFoldsPlugin extends Plugin {
     } finally {
       this.syncing.delete(view);
     }
+  }
+
+  private async togglePersistence(view: MarkdownView, target: FoldRule): Promise<void> {
+    const file = view.file;
+    if (!file) return;
+    const markdown = view.editor.getValue();
+    const targetLine = linesForRules(markdown, [target])[0];
+    const rules = this.readRules(file);
+    const index = rules.findIndex((rule) => linesForRules(markdown, [rule])[0] === targetLine);
+    let persistent: boolean;
+
+    if (index === -1) {
+      rules.push({ ...target, persist: true });
+      persistent = true;
+    } else {
+      persistent = rules[index].persist !== true;
+      const foldedLines = new Set((this.getMode(view)?.getFoldInfo?.()?.folds ?? []).map((fold) => fold.from));
+      if (!persistent && targetLine !== undefined && !foldedLines.has(targetLine)) rules.splice(index, 1);
+      else rules[index] = { ...rules[index], persist: persistent || undefined };
+    }
+
+    await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
+      if (rules.length === 0) delete frontmatter[this.settings.propertyName];
+      else frontmatter[this.settings.propertyName] = rules;
+    });
+    new Notice(`Fold persistence ${persistent ? "enabled" : "disabled"}.`);
   }
 
   async loadSettings(): Promise<void> {

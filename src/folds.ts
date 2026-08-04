@@ -2,6 +2,7 @@ export type HeadingFoldRule = {
   type: "heading";
   path: string[];
   occurrence?: number;
+  persist?: boolean;
 };
 
 export type ListFoldRule = {
@@ -9,6 +10,7 @@ export type ListFoldRule = {
   path: string[];
   under?: string[];
   occurrence?: number;
+  persist?: boolean;
 };
 
 export type FoldRule = HeadingFoldRule | ListFoldRule;
@@ -35,7 +37,7 @@ function sameStrings(left: string[] | undefined, right: string[] | undefined): b
   return a.length === b.length && a.every((value, index) => value === b[index]);
 }
 
-function sameIdentity(left: FoldRule, right: FoldRule): boolean {
+export function sameRuleIdentity(left: FoldRule, right: FoldRule): boolean {
   if (left.type !== right.type || !sameStrings(left.path, right.path)) return false;
   return left.type === "heading" || (right.type === "list" && sameStrings(left.under, right.under));
 }
@@ -49,12 +51,13 @@ export function normalizeRule(value: unknown): FoldRule | null {
   const occurrence = typeof record.occurrence === "number" && Number.isInteger(record.occurrence) && record.occurrence > 1
     ? record.occurrence
     : undefined;
+  const persist = record.persist === true ? true : undefined;
 
-  if (record.type === "heading") return { type: "heading", path: record.path, occurrence };
+  if (record.type === "heading") return { type: "heading", path: record.path, occurrence, persist };
   const under = Array.isArray(record.under) && record.under.every((item) => typeof item === "string")
     ? record.under
     : undefined;
-  return { type: "list", path: record.path, under, occurrence };
+  return { type: "list", path: record.path, under, occurrence, persist };
 }
 
 export function parseFoldCandidates(markdown: string): FoldCandidate[] {
@@ -113,7 +116,7 @@ export function parseFoldCandidates(markdown: string): FoldCandidate[] {
 
   const seen: FoldRule[] = [];
   return candidates.map((candidate) => {
-    const occurrence = seen.filter((rule) => sameIdentity(rule, candidate.rule)).length + 1;
+    const occurrence = seen.filter((rule) => sameRuleIdentity(rule, candidate.rule)).length + 1;
     seen.push(candidate.rule);
     return occurrence === 1 ? candidate : { ...candidate, rule: { ...candidate.rule, occurrence } };
   });
@@ -125,11 +128,28 @@ export function rulesForFoldedLines(markdown: string, foldedLines: ReadonlySet<n
     .map((candidate) => candidate.rule);
 }
 
+export function rulesForSync(
+  markdown: string,
+  foldedLines: ReadonlySet<number>,
+  existingRules: readonly FoldRule[]
+): FoldRule[] {
+  return parseFoldCandidates(markdown)
+    .map((candidate) => {
+      const existing = existingRules.find((rule) =>
+        sameRuleIdentity(rule, candidate.rule)
+        && (rule.occurrence ?? 1) === (candidate.rule.occurrence ?? 1)
+      );
+      if (!foldedLines.has(candidate.line) && !existing?.persist) return null;
+      return existing?.persist ? { ...candidate.rule, persist: true } : candidate.rule;
+    })
+    .filter((rule): rule is FoldRule => rule !== null);
+}
+
 export function linesForRules(markdown: string, rules: readonly FoldRule[]): number[] {
   const candidates = parseFoldCandidates(markdown);
   return candidates
     .filter((candidate) => rules.some((rule) => {
-      if (!sameIdentity(rule, candidate.rule)) return false;
+      if (!sameRuleIdentity(rule, candidate.rule)) return false;
       return (rule.occurrence ?? 1) === (candidate.rule.occurrence ?? 1);
     }))
     .map((candidate) => candidate.line);

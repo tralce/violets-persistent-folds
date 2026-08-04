@@ -37,6 +37,12 @@ folds:
 Duplicate paths receive an `occurrence` number. You can edit the rules by hand;
 run **Apply folds from frontmatter** to apply changes without reopening the note.
 
+Add `persist: true` to a rule when temporarily unfolding it should not remove it
+from frontmatter. Put the cursor on a heading or list item and run **Toggle
+persistence for fold at cursor** to change this without editing YAML. Persistent
+rules fold again the next time the note opens; non-persistent rules continue to
+track the current fold state automatically.
+
 ## Install development builds with BRAT
 
 Add `tralce/obsidian-frontmatter-folds` as a beta plugin in BRAT. Every push to

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { linesForRules, parseFoldCandidates, rulesForFoldedLines } from "../src/folds";
+import { linesForRules, parseFoldCandidates, rulesForFoldedLines, rulesForSync } from "../src/folds";
 
 const note = `---
 title: Example
@@ -40,5 +40,18 @@ describe("fold selectors", () => {
     const rules = rulesForFoldedLines(note, new Set([8, 10]));
     const edited = note.replace("Text\n", "Text\nAnother paragraph\n");
     expect(linesForRules(edited, rules)).toEqual([9, 11]);
+  });
+
+  it("retains persistent rules when temporarily unfolded", () => {
+    const existing = rulesForFoldedLines(note, new Set([4, 8])).map((rule, index) =>
+      index === 0 ? { ...rule, persist: true as const } : rule
+    );
+    expect(rulesForSync(note, new Set<number>(), existing)).toEqual([
+      { type: "heading", path: ["Project", "Details"], persist: true }
+    ]);
+    expect(rulesForSync(note, new Set([8]), existing)).toEqual([
+      { type: "heading", path: ["Project", "Details"], persist: true },
+      { type: "list", under: ["Project", "Details"], path: ["Tasks", "Later"] }
+    ]);
   });
 });
