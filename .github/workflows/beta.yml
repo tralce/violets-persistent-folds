@@ -27,7 +27,7 @@ jobs:
         env:
           RUN_NUMBER: ${{ github.run_number }}
         run: |
-          version=$(node -p "require('./manifest.json').version + '-beta.' + process.env.RUN_NUMBER")
+          version=$(node -p "((v) => v[0] + '.' + v[1] + '.' + (Number(v[2]) + 1) + '-beta.' + process.env.RUN_NUMBER)(require('./manifest.json').version.split('.'))")
           VERSION="$version" node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('manifest.json')); p.version=process.env.VERSION; fs.writeFileSync('manifest.json', JSON.stringify(p, null, 2)+'\n')"
           echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Publish BRAT-compatible prerelease
