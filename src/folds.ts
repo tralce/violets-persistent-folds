@@ -31,33 +31,59 @@ function cleanText(value: string): string {
     .trim();
 }
 
-function sameStrings(left: string[] | undefined, right: string[] | undefined): boolean {
-  const a = left ?? [];
-  const b = right ?? [];
-  return a.length === b.length && a.every((value, index) => value === b[index]);
+function suffixMatches(left: string[], right: string[]): boolean {
+  const shorter = left.length <= right.length ? left : right;
+  const longer = left.length <= right.length ? right : left;
+  return shorter.every((value, index) => value === longer[longer.length - shorter.length + index]);
 }
 
 export function sameRuleIdentity(left: FoldRule, right: FoldRule): boolean {
-  if (left.type !== right.type || !sameStrings(left.path, right.path)) return false;
-  return left.type === "heading" || (right.type === "list" && sameStrings(left.under, right.under));
+  if (left.type !== right.type || !suffixMatches(left.path, right.path)) return false;
+  if (left.type === "heading" || right.type === "heading") return true;
+  if (left.under === undefined || right.under === undefined) return true;
+  return suffixMatches(left.under, right.under);
 }
 
 export function normalizeRule(value: unknown): FoldRule | null {
   if (!value || typeof value !== "object") return null;
   const record = value as Record<string, unknown>;
+  const persist = record.persist === true ? true : undefined;
+  if (typeof record.heading === "string") {
+    return { type: "heading", path: [record.heading], persist };
+  }
+  if (typeof record.list === "string") {
+    const under = typeof record.under === "string" ? [record.under] : undefined;
+    return { type: "list", path: [record.list], under, persist };
+  }
   if (record.type !== "heading" && record.type !== "list") return null;
   if (!Array.isArray(record.path) || !record.path.every((item) => typeof item === "string")) return null;
 
   const occurrence = typeof record.occurrence === "number" && Number.isInteger(record.occurrence) && record.occurrence > 1
     ? record.occurrence
     : undefined;
-  const persist = record.persist === true ? true : undefined;
-
   if (record.type === "heading") return { type: "heading", path: record.path, occurrence, persist };
   const under = Array.isArray(record.under) && record.under.every((item) => typeof item === "string")
     ? record.under
     : undefined;
   return { type: "list", path: record.path, under, occurrence, persist };
+}
+
+export function serializeRules(markdown: string, rules: readonly FoldRule[]): Array<Record<string, unknown>> {
+  const candidates = parseFoldCandidates(markdown);
+  return rules.map((rule) => {
+    const leaf = rule.path[rule.path.length - 1];
+    const matches = candidates.filter((candidate) =>
+      candidate.rule.type === rule.type
+      && candidate.rule.path[candidate.rule.path.length - 1] === leaf
+    );
+    const persist = rule.persist ? { persist: true } : {};
+    if (matches.length === 1) {
+      return rule.type === "heading" ? { heading: leaf, ...persist } : { list: leaf, ...persist };
+    }
+    return rule.type === "heading"
+      ? { type: "heading", path: rule.path, occurrence: rule.occurrence, ...persist }
+      : { type: "list", under: rule.under, path: rule.path, occurrence: rule.occurrence, ...persist };
+  });
 }
 
 export function parseFoldCandidates(markdown: string): FoldCandidate[] {

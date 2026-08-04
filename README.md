@@ -20,19 +20,14 @@ inserted or removed.
 ```yaml
 ---
 folds:
-  - type: heading
-    path:
-      - Project
-      - Details
-  - type: list
-    under:
-      - Project
-      - Tasks
-    path:
-      - Backlog
-      - Someday
+  - heading: Details
+  - list: Someday
+    persist: true
 ---
 ```
+
+The plugin writes full paths only when duplicate heading or list names require
+disambiguation.
 
 Duplicate paths receive an `occurrence` number. You can edit the rules by hand;
 run **Apply folds from frontmatter** to apply changes without reopening the note.

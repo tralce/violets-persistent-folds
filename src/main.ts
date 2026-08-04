@@ -1,5 +1,5 @@
 import { MarkdownView, Notice, Plugin, PluginSettingTab, Setting, TFile, type App } from "obsidian";
-import { linesForRules, normalizeRule, parseFoldCandidates, rulesForSync, type FoldRule } from "./folds";
+import { linesForRules, normalizeRule, parseFoldCandidates, rulesForSync, serializeRules, type FoldRule } from "./folds";
 
 type FoldInfo = { folds: Array<{ from: number; to: number }>; lines: number };
 type FoldMode = {
@@ -193,7 +193,7 @@ export default class FrontmatterFoldsPlugin extends Plugin {
       if (JSON.stringify(this.readRules(file)) !== JSON.stringify(rules)) {
         await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
           if (rules.length === 0) delete frontmatter[this.settings.propertyName];
-          else frontmatter[this.settings.propertyName] = rules;
+          else frontmatter[this.settings.propertyName] = serializeRules(markdown, rules);
         });
       }
 
@@ -227,7 +227,7 @@ export default class FrontmatterFoldsPlugin extends Plugin {
 
     await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
       if (rules.length === 0) delete frontmatter[this.settings.propertyName];
-      else frontmatter[this.settings.propertyName] = rules;
+      else frontmatter[this.settings.propertyName] = serializeRules(markdown, rules);
     });
     new Notice(`Fold persistence ${persistent ? "enabled" : "disabled"}.`);
   }

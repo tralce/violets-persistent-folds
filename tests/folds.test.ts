@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { linesForRules, parseFoldCandidates, rulesForFoldedLines, rulesForSync } from "../src/folds";
+import { linesForRules, normalizeRule, parseFoldCandidates, rulesForFoldedLines, rulesForSync, serializeRules } from "../src/folds";
 
 const note = `---
 title: Example
@@ -53,5 +53,17 @@ describe("fold selectors", () => {
       { type: "heading", path: ["Project", "Details"], persist: true },
       { type: "list", under: ["Project", "Details"], path: ["Tasks", "Later"] }
     ]);
+  });
+
+  it("stores unique selectors compactly", () => {
+    const rules = rulesForFoldedLines(note, new Set([8])).map((rule) => ({ ...rule, persist: true as const }));
+    expect(serializeRules(note, rules)).toEqual([{ list: "Later", persist: true }]);
+    expect(normalizeRule({ list: "Later", persist: true })).toEqual({
+      type: "list",
+      path: ["Later"],
+      under: undefined,
+      persist: true
+    });
+    expect(linesForRules(note, [normalizeRule({ list: "Later" })!])).toEqual([8]);
   });
 });
