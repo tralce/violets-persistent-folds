@@ -1,0 +1,26 @@
+{
+  "name": "obsidian-frontmatter-folds",
+  "version": "0.1.0",
+  "description": "Persist Obsidian heading and list folds as stable frontmatter selectors.",
+  "type": "module",
+  "main": "main.js",
+  "scripts": {
+    "build": "tsc --noEmit && node esbuild.config.mjs production",
+    "dev": "node esbuild.config.mjs",
+    "test": "vitest run",
+    "validate-release": "node scripts/validate-release.mjs",
+    "check": "npm run test && npm run build && npm run validate-release",
+    "deploy": "node scripts/deploy.mjs"
+  },
+  "keywords": ["obsidian", "plugin", "folding", "frontmatter"],
+  "author": "Violet Hadley",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "latest",
+    "esbuild": "latest",
+    "obsidian": "latest",
+    "tslib": "latest",
+    "typescript": "latest",
+    "vitest": "latest"
+  }
+}
