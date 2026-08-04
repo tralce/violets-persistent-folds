@@ -8,13 +8,14 @@ human-readable frontmatter instead of workspace cache state or inline comments.
 ## Usage
 
 1. Fold the headings and parent list items you want to persist.
-2. Run **Frontmatter Folds: Sync current folds to frontmatter**.
+2. The plugin syncs the changed fold state to frontmatter automatically.
 3. Reopen the note. Its recorded folds are applied automatically.
 
-The command replaces the note's `folds` property with the current heading and
-list folds. Other foldable constructs are skipped. The generated selectors use
-heading and list ancestry, so they survive unrelated lines being inserted or
-removed.
+The **Sync current folds to frontmatter** command remains available to force an
+immediate sync. Syncing replaces the note's `folds` property with the current
+heading and list folds; other foldable constructs are skipped. The generated
+selectors use heading and list ancestry, so they survive unrelated lines being
+inserted or removed.
 
 ```yaml
 ---
