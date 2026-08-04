@@ -1,0 +1,43 @@
+name: Beta release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: beta-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - name: Set beta version
+        id: version
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          version=$(node -p "require('./manifest.json').version + '-beta.' + process.env.RUN_NUMBER")
+          VERSION="$version" node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('manifest.json')); p.version=process.env.VERSION; fs.writeFileSync('manifest.json', JSON.stringify(p, null, 2)+'\n')"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Publish BRAT-compatible prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "$VERSION" \
+            main.js manifest.json versions.json \
+            --target "$GITHUB_SHA" \
+            --title "$VERSION" \
+            --prerelease \
+            --generate-notes

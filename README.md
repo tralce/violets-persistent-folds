@@ -36,6 +36,12 @@ folds:
 Duplicate paths receive an `occurrence` number. You can edit the rules by hand;
 run **Apply folds from frontmatter** to apply changes without reopening the note.
 
+## Install development builds with BRAT
+
+Add `tralce/obsidian-frontmatter-folds` as a beta plugin in BRAT. Every push to
+`main` is tested, built, and published as a uniquely versioned prerelease, which
+lets BRAT detect and install each iteration automatically.
+
 ## Development
 
 ```sh

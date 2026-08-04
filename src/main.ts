@@ -25,6 +25,7 @@ const defaults: Settings = {
 export default class FrontmatterFoldsPlugin extends Plugin {
   override settings: Settings = defaults;
   private applying = new WeakSet<MarkdownView>();
+  private patchedViewPrototype: object | null = null;
 
   override async onload(): Promise<void> {
     await this.loadSettings();
@@ -52,22 +53,53 @@ export default class FrontmatterFoldsPlugin extends Plugin {
     });
 
     this.addSettingTab(new FrontmatterFoldsSettingTab(this.app, this));
-    this.registerEvent(this.app.workspace.on("file-open", () => this.scheduleActiveView()));
+    this.registerEvent(this.app.workspace.on("file-open", () => {
+      const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+      if (view) {
+        this.patchViewLoading(view);
+        this.scheduleView(view);
+      }
+    }));
     this.registerEvent(this.app.workspace.on("active-leaf-change", () => this.scheduleActiveView()));
     this.app.workspace.onLayoutReady(() => {
       for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
-        if (leaf.view instanceof MarkdownView) this.scheduleView(leaf.view);
+        if (leaf.view instanceof MarkdownView) {
+          this.patchViewLoading(leaf.view);
+          this.scheduleView(leaf.view);
+        }
       }
     });
   }
 
   private scheduleActiveView(): void {
     const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-    if (view) this.scheduleView(view);
+    if (view) {
+      this.patchViewLoading(view);
+      this.scheduleView(view);
+    }
   }
 
   private scheduleView(view: MarkdownView): void {
-    window.setTimeout(() => void this.applyView(view), 0);
+    window.setTimeout(() => void this.applyView(view), 100);
+  }
+
+  private patchViewLoading(view: MarkdownView): void {
+    const prototype = Object.getPrototypeOf(view) as {
+      onLoadFile?: (file: TFile) => Promise<void>;
+    };
+    if (this.patchedViewPrototype === prototype || typeof prototype.onLoadFile !== "function") return;
+
+    const original = prototype.onLoadFile;
+    const plugin = this;
+    const patched = async function(this: MarkdownView, file: TFile): Promise<void> {
+      await original.call(this, file);
+      await plugin.applyView(this);
+    };
+    prototype.onLoadFile = patched;
+    this.patchedViewPrototype = prototype;
+    this.register(() => {
+      if (prototype.onLoadFile === patched) prototype.onLoadFile = original;
+    });
   }
 
   private getMode(view: MarkdownView): FoldMode | null {
@@ -90,7 +122,7 @@ export default class FrontmatterFoldsPlugin extends Plugin {
     if (rules.length === 0) return;
     this.applying.add(view);
     try {
-      const markdown = await this.app.vault.cachedRead(view.file);
+      const markdown = view.editor.getValue();
       const ruleLines = linesForRules(markdown, rules);
       const existing = this.settings.replaceOtherFolds ? [] : (mode.getFoldInfo?.()?.folds ?? []);
       const byLine = new Map(existing.map((fold) => [fold.from, fold]));
@@ -105,9 +137,13 @@ export default class FrontmatterFoldsPlugin extends Plugin {
   private async syncView(view: MarkdownView): Promise<void> {
     const file = view.file;
     const mode = this.getMode(view);
-    if (!file || !mode?.getFoldInfo) return;
+    if (!file) return;
+    if (!mode?.getFoldInfo) {
+      new Notice("Could not read this editor's fold state. Switch to Editing view and try again.");
+      return;
+    }
 
-    const markdown = await this.app.vault.cachedRead(file);
+    const markdown = view.editor.getValue();
     const foldedLines = new Set((mode.getFoldInfo()?.folds ?? []).map((fold) => fold.from));
     const rules = rulesForFoldedLines(markdown, foldedLines);
     const unsupported = foldedLines.size - rules.length;
@@ -117,7 +153,6 @@ export default class FrontmatterFoldsPlugin extends Plugin {
       else frontmatter[this.settings.propertyName] = rules;
     });
 
-    window.setTimeout(() => void this.applyView(view), 0);
     const skipped = unsupported > 0 ? ` Skipped ${unsupported} non-heading/list fold${unsupported === 1 ? "" : "s"}.` : "";
     new Notice(`Synced ${rules.length} fold${rules.length === 1 ? "" : "s"} to frontmatter.${skipped}`);
   }
