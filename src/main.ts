@@ -24,7 +24,9 @@ const defaults: Settings = {
   autoSync: true
 };
 
-export default class FrontmatterFoldsPlugin extends Plugin {
+const legacyPluginId = "frontmatter-folds";
+
+export default class VioletsPersistentFoldsPlugin extends Plugin {
   override settings: Settings = defaults;
   private applying = new WeakSet<MarkdownView>();
   private syncing = new WeakSet<MarkdownView>();
@@ -46,7 +48,7 @@ export default class FrontmatterFoldsPlugin extends Plugin {
     });
 
     this.addCommand({
-      id: "apply-frontmatter-folds",
+      id: "apply-persistent-folds",
       name: "Apply folds from frontmatter",
       checkCallback: (checking) => {
         const view = this.app.workspace.getActiveViewOfType(MarkdownView);
@@ -70,7 +72,7 @@ export default class FrontmatterFoldsPlugin extends Plugin {
       }
     });
 
-    this.addSettingTab(new FrontmatterFoldsSettingTab(this.app, this));
+    this.addSettingTab(new VioletsPersistentFoldsSettingTab(this.app, this));
     this.registerEvent(this.app.workspace.on("file-open", () => {
       const view = this.app.workspace.getActiveViewOfType(MarkdownView);
       if (view) {
@@ -233,7 +235,19 @@ export default class FrontmatterFoldsPlugin extends Plugin {
   }
 
   async loadSettings(): Promise<void> {
-    this.settings = { ...defaults, ...(await this.loadData() as Partial<Settings> | null) };
+    let saved = await this.loadData() as Partial<Settings> | null;
+    if (saved == null) {
+      const legacyPath = `${this.app.vault.configDir}/plugins/${legacyPluginId}/data.json`;
+      try {
+        if (await this.app.vault.adapter.exists(legacyPath)) {
+          saved = JSON.parse(await this.app.vault.adapter.read(legacyPath)) as Partial<Settings>;
+          await this.saveData(saved);
+        }
+      } catch (error) {
+        console.warn("Violet's Persistent Folds could not import legacy settings.", error);
+      }
+    }
+    this.settings = { ...defaults, ...(saved ?? {}) };
   }
 
   async saveSettings(): Promise<void> {
@@ -241,8 +255,8 @@ export default class FrontmatterFoldsPlugin extends Plugin {
   }
 }
 
-class FrontmatterFoldsSettingTab extends PluginSettingTab {
-  constructor(app: App, private readonly plugin: FrontmatterFoldsPlugin) {
+class VioletsPersistentFoldsSettingTab extends PluginSettingTab {
+  constructor(app: App, private readonly plugin: VioletsPersistentFoldsPlugin) {
     super(app, plugin);
   }
 

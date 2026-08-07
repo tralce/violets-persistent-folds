@@ -1,10 +1,10 @@
 {
-  "id": "frontmatter-folds",
-  "name": "Frontmatter Folds",
+  "id": "violets-persistent-folds",
+  "name": "Violet's Persistent Folds",
   "version": "0.1.0",
   "minAppVersion": "1.5.0",
   "description": "Persist heading and indented-list folds in note frontmatter.",
-  "author": "Violet Hadley",
+  "author": "tralce",
   "authorUrl": "https://github.com/tralce",
   "isDesktopOnly": false
 }

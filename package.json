@@ -1,5 +1,5 @@
 {
-  "name": "obsidian-frontmatter-folds",
+  "name": "violets-persistent-folds",
   "version": "0.1.0",
   "description": "Persist Obsidian heading and list folds as stable frontmatter selectors.",
   "type": "module",
@@ -13,7 +13,7 @@
     "deploy": "node scripts/deploy.mjs"
   },
   "keywords": ["obsidian", "plugin", "folding", "frontmatter"],
-  "author": "Violet Hadley",
+  "author": "tralce",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "latest",

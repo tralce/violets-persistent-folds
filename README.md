@@ -1,6 +1,6 @@
-# Frontmatter Folds
+# Violet's Persistent Folds
 
-[![CI](https://github.com/tralce/obsidian-frontmatter-folds/actions/workflows/ci.yml/badge.svg)](https://github.com/tralce/obsidian-frontmatter-folds/actions/workflows/ci.yml)
+[![CI](https://github.com/tralce/violets-persistent-folds/actions/workflows/ci.yml/badge.svg)](https://github.com/tralce/violets-persistent-folds/actions/workflows/ci.yml)
 
 An Obsidian plugin that persists heading and indented-list folds as stable,
 human-readable frontmatter instead of workspace cache state or inline comments.
@@ -40,7 +40,7 @@ track the current fold state automatically.
 
 ## Install development builds with BRAT
 
-Add `tralce/obsidian-frontmatter-folds` as a beta plugin in BRAT. Every push to
+Add `tralce/violets-persistent-folds` as a beta plugin in BRAT. Every push to
 `main` is tested, built, and published as a uniquely versioned prerelease, which
 lets BRAT detect and install each iteration automatically.
 
@@ -65,7 +65,14 @@ npm run deploy -- /path/to/vault
 ## Installation from source
 
 Build the project, then copy or symlink `main.js`, `manifest.json`, and
-`versions.json` into `.obsidian/plugins/frontmatter-folds/` in a vault.
+`versions.json` into `.obsidian/plugins/violets-persistent-folds/` in a vault.
+
+## Migration from Frontmatter Folds
+
+This plugin was previously named **Frontmatter Folds**, with the plugin ID
+`frontmatter-folds` and repository `tralce/obsidian-frontmatter-folds`. The new
+plugin imports settings from the old plugin directory when it has no settings
+of its own. Old identifiers that remain in the migration code are intentional.
 
 ## License
 
